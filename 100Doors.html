@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>100 Doors Puzzle Visualization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            margin: 20px 0;
+        }
+        .door {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #333;
+            font-weight: bold;
+            user-select: none;
+            position: relative;
+            background-color: #f8f8f8;
+        }
+        .door.open {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .door.closed {
+            background-color: #f8f8f8;
+            color: #333;
+        }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        #speed {
+            width: 200px;
+        }
+        .status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .info-panel {
+            background-color: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .explanation {
+            margin: 20px 0;
+            line-height: 1.8;
+        }
+        .parity {
+            font-size: 0.8em;
+            position: absolute;
+            bottom: 2px;
+            right: 5px;
+        }
+        #pass-display {
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+        .highlight {
+            animation: flash 1s;
+        }
+        @keyframes flash {
+            0% { background-color: #ffeb3b; }
+            100% { background-color: inherit; }
+        }
+    </style>
+</head>
+<body>
+    <h1>100 Doors Puzzle Visualization</h1>
+    
+    <div class="info-panel">
+        <h2>The Puzzle</h2>
+        <p>You have 100 doors in a row that are all initially closed. You make 100 passes by the doors. The first time through, you visit every door and toggle the door (if the door is closed, you open it; if it is open, you close it). The second time, you only visit every 2nd door (door #2, #4, #6, ...) and toggle it. The third time, you visit every 3rd door (door #3, #6, #9, ...), etc.</p>
+        <p>Question: Which doors are left open after the last pass?</p>
+    </div>
+
+    <div class="controls">
+        <button id="reset">Reset</button>
+        <button id="next-pass">Next Pass</button>
+        <button id="play">▶ Play Animation</button>
+        <button id="complete">Skip to Final Result</button>
+        <div class="slider-container">
+            <label for="speed">Speed:</label>
+            <input type="range" id="speed" min="1" max="100" value="50">
+        </div>
+    </div>
+
+    <div id="pass-display">Pass: 0 of 100</div>
+    <div class="status" id="status">All doors are closed. Click "Next Pass" or "Play Animation" to start.</div>
+
+    <div class="grid" id="doors-grid"></div>
+
+    <div class="explanation">
+        <h2>Explanation</h2>
+        <p>After all passes, you'll notice that only doors with perfect square numbers (1, 4, 9, 16, 25, 36, 49, 64, 81, 100) remain open.</p>
+        <p>This happens because a door is toggled exactly once for each of its factors. For example, door #12 is toggled for factors 1, 2, 3, 4, 6, and 12. Since there are an even number of factors, the door ends up closed.</p>
+        <p>However, perfect squares have an odd number of factors (because one factor, the square root, is counted only once). This is why only perfect square doors remain open.</p>
+    </div>
+
+    <div class="info-panel">
+        <h2>Source Code</h2>
+        <pre>
+#include &lt;stdio.h&gt;
+int main() {
+    int a[100];
+    int i, j;
+
+    // Initialize all doors as closed (0)
+    for (i = 0; i < 100; i++) {
+        a[i] = 0;
+    }
+
+    // Perform passes
+    for (i = 0; i < 100; i++) {
+        for (j = i; j < 100; j += i + 1) {
+            a[j] = 1 - a[j];  // Toggle the door state
+        }
+    }
+
+    // Print doors that are open (1)
+    printf("Doors that are opened: ");
+    for (i = 0; i < 100; i++) {
+        if (a[i] == 1) {
+            printf("[%d] ", i + 1);
+        }
+    }
+}</pre>
+    </div>
+
+    <script>
+        // Initialize doors
+        const doorsGrid = document.getElementById('doors-grid');
+        const doors = [];
+        let currentPass = 0;
+        const totalDoors = 100;
+        let animationRunning = false;
+        let animationId = null;
+
+        function createDoors() {
+            doorsGrid.innerHTML = '';
+            doors.length = 0;
+            
+            for (let i = 0; i < totalDoors; i++) {
+                const door = document.createElement('div');
+                door.className = 'door closed';
+                door.textContent = i + 1;
+                
+                // Count factors to show toggle parity
+                const factorCount = countFactors(i + 1);
+                const parity = document.createElement('span');
+                parity.className = 'parity';
+                parity.textContent = factorCount % 2 === 0 ? 'Even' : 'Odd';
+                door.appendChild(parity);
+                
+                doorsGrid.appendChild(door);
+                doors.push({
+                    element: door,
+                    isOpen: false,
+                    number: i + 1
+                });
+            }
+        }
+
+        function countFactors(num) {
+            let count = 0;
+            for (let i = 1; i <= num; i++) {
+                if (num % i === 0) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        function resetDoors() {
+            stopAnimation();
+            currentPass = 0;
+            updatePassDisplay();
+            
+            for (let door of doors) {
+                door.isOpen = false;
+                door.element.className = 'door closed';
+            }
+            
+            document.getElementById('status').textContent = 'All doors are closed. Click "Next Pass" or "Play Animation" to start.';
+            document.getElementById('next-pass').disabled = false;
+            document.getElementById('play').textContent = '▶ Play Animation';
+        }
+
+        function performPass(pass) {
+            if (pass >= totalDoors) return false;
+            
+            // Toggle doors for this pass
+            const interval = pass + 1;
+            for (let j = pass; j < totalDoors; j += interval) {
+                doors[j].isOpen = !doors[j].isOpen;
+                doors[j].element.className = `door ${doors[j].isOpen ? 'open' : 'closed'} highlight`;
+                setTimeout(() => {
+                    doors[j].element.classList.remove('highlight');
+                }, 500);
+            }
+            
+            currentPass++;
+            updatePassDisplay();
+            
+            // Update status
+            const openDoors = doors.filter(door => door.isOpen);
+            document.getElementById('status').textContent = `Pass ${currentPass} complete. ${openDoors.length} doors are now open.`;
+            
+            if (currentPass === totalDoors) {
+                document.getElementById('next-pass').disabled = true;
+                document.getElementById('status').textContent += " All passes complete! Notice that only perfect square numbered doors (1, 4, 9, 16, 25, 36, 49, 64, 81, 100) are open.";
+                return false;
+            }
+            
+            return true;
+        }
+
+        function updatePassDisplay() {
+            document.getElementById('pass-display').textContent = `Pass: ${currentPass} of 100`;
+        }
+
+        function completeSimulation() {
+            resetDoors();
+            for (let i = 0; i < totalDoors; i++) {
+                // Math shortcut: a door will be open if its number is a perfect square
+                const doorNumber = i + 1;
+                const isSquare = Math.sqrt(doorNumber) % 1 === 0;
+                
+                if (isSquare) {
+                    doors[i].isOpen = true;
+                    doors[i].element.className = 'door open';
+                }
+            }
+            
+            currentPass = totalDoors;
+            updatePassDisplay();
+            
+            const openDoors = doors.filter(door => door.isOpen);
+            document.getElementById('status').textContent = `All passes complete! ${openDoors.length} doors are open - all perfect squares.`;
+            document.getElementById('next-pass').disabled = true;
+        }
+
+        function startAnimation() {
+            if (animationRunning) {
+                stopAnimation();
+                return;
+            }
+            
+            if (currentPass >= totalDoors) {
+                resetDoors();
+            }
+            
+            animationRunning = true;
+            document.getElementById('play').textContent = '⏸ Pause Animation';
+            
+            let speedFactor = 101 - document.getElementById('speed').value;
+            
+            function animate() {
+                const canContinue = performPass(currentPass);
+                if (canContinue) {
+                    animationId = setTimeout(animate, speedFactor * 10);
+                } else {
+                    stopAnimation();
+                }
+            }
+            
+            animate();
+        }
+
+        function stopAnimation() {
+            if (animationId !== null) {
+                clearTimeout(animationId);
+                animationId = null;
+            }
+            animationRunning = false;
+            document.getElementById('play').textContent = '▶ Play Animation';
+        }
+
+        // Initialize
+        createDoors();
+
+        // Event listeners
+        document.getElementById('reset').addEventListener('click', resetDoors);
+        document.getElementById('next-pass').addEventListener('click', () => performPass(currentPass));
+        document.getElementById('play').addEventListener('click', startAnimation);
+        document.getElementById('complete').addEventListener('click', completeSimulation);
+        document.getElementById('speed').addEventListener('input', function() {
+            if (animationRunning) {
+                // Restart animation with new speed
+                stopAnimation();
+                startAnimation();
+            }
+        });
+    </script>
+</body>
+</html>
